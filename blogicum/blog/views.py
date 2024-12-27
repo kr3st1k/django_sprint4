@@ -17,6 +17,13 @@ from core.mixins import CommentMixinView
 from .models import Post, User, Category, Comment
 from .forms import UserEditForm, PostEditForm, CommentEditForm
 
+def filter_and_annotate_posts(queryset=None, skip_filter=False):
+    if queryset is None:
+        queryset = Post.objects.all()
+    if not skip_filter:
+        queryset = queryset.filter(is_published=True, pub_date__lte=now(), category__is_published=True)
+    return queryset.annotate(comment_count=Count('comments')).order_by(*Post._meta.ordering)
+
 class MainPostListView(ListView):
     """Главная страница со списком постов."""
     model = Post
@@ -101,7 +108,7 @@ class UserProfileUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_success_url(self):
         username = self.request.user
-        return reverse("blog:profile", kwargs={"username": username})
+        return redirect("blog:profile", kwargs={"username": username})
 
 class PostCreateView(LoginRequiredMixin, CreateView):
     """Создание поста."""
@@ -115,7 +122,7 @@ class PostCreateView(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         username = self.request.user
-        return reverse("blog:profile", kwargs={"username": username})
+        return redirect("blog:profile", kwargs={"username": username})
 
 class PostUpdateView(LoginRequiredMixin, UpdateView):
     """Редактирование поста."""
@@ -130,7 +137,7 @@ class PostUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_success_url(self):
         pk = self.kwargs["pk"]
-        return reverse("blog:post_detail", kwargs={"pk": pk})
+        return redirect("blog:post_detail", kwargs={"pk": pk})
 
 class PostDeleteView(LoginRequiredMixin, DeleteView):
     """Удаление поста."""
@@ -171,7 +178,7 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         pk = self.kwargs["pk"]
-        return reverse("blog:post_detail", kwargs={"pk": pk})
+        return redirect("blog:post_detail", kwargs={"pk": pk})
 
     def send_author_email(self):
         post_url = self.request.build_absolute_uri(self.get_success_url())
@@ -200,7 +207,7 @@ class CommentDeleteView(CommentMixinView, DeleteView):
 
     def get_success_url(self):
         pk = self.kwargs["pk"]
-        return reverse("blog:post_detail", kwargs={"pk": pk})
+        return redirect("blog:post_detail", kwargs={"pk": pk})
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
